@@ -1,7 +1,9 @@
 import math
-import cv2
 
-DIVIDING_LINE_LENGTH = 32
+import cv2
+import numpy as np
+
+DIVIDING_LINE_LENGTH = 36
 
 
 def get_distance(points, p_1_index, p_2_index, width, height):
@@ -154,6 +156,51 @@ def get_face_symmetries(points, image_width, image_height):
     return eyebrows_symmetry, eyes_symmetry, nose_symmetry, mouth_symmetry
 
 
+def get_exercise_symmetry(points, img_width, img_height, center_points,
+                          exercise_right_side_points, exercise_left_side_points):
+    c_x = 0
+    c_y = 0
+    c_n = 0
+    for c_idx in center_points:
+        c_x += points[c_idx].x
+        c_y += points[c_idx].y
+        c_n += 1
+
+    if c_n != 0:
+        c_x /= c_n
+        c_y /= c_n
+
+    c_x *= img_width
+    c_y *= img_height
+
+    right_side_distances = 0
+    for p_idx in exercise_right_side_points:
+        p_x = points[p_idx].x * img_width
+        p_y = points[p_idx].y * img_height
+
+        p_distance = math.sqrt((p_x - c_x) ** 2 + (p_y - c_y) ** 2)
+        right_side_distances += p_distance
+
+    left_side_distances = 0
+    for p_idx in exercise_left_side_points:
+        p_x = points[p_idx].x * img_width
+        p_y = points[p_idx].y * img_height
+
+        p_distance = math.sqrt((p_x - c_x) ** 2 + (p_y - c_y) ** 2)
+        left_side_distances += p_distance
+
+    if (right_side_distances < left_side_distances) and (left_side_distances != 0):
+        exercise_symmetry = right_side_distances / left_side_distances
+        exercise_symmetry = round(exercise_symmetry, 2)
+    elif (left_side_distances < right_side_distances) and (right_side_distances != 0):
+        exercise_symmetry = left_side_distances / right_side_distances
+        exercise_symmetry = round(exercise_symmetry, 2)
+    else:
+        exercise_symmetry = np.nan
+
+    return exercise_symmetry
+
+
 def put_image_points(input_image, points,
                      regular_point_radius, interest_point_radius,
                      regular_point_color, interest_point_color, line_color):
@@ -229,5 +276,70 @@ def put_image_points(input_image, points,
              (int(points[61].x * width), int(points[61].y * height)), line_color, 2)
     cv2.line(output_image, (int(points[263].x * width), int(points[263].y * height)),
              (int(points[291].x * width), int(points[291].y * height)), line_color, 2)
+
+    return output_image
+
+
+def put_image_exercise_points(input_image, points, exercise_points, center_points,
+                              exercise_point_radius, center_point_radius,
+                              exercise_point_color, center_point_color):
+    height = input_image.shape[0]
+    width = input_image.shape[1]
+
+    output_image = input_image.copy()
+
+    for i in exercise_points:
+        point = points[i]
+        point_x = int(point.x * width)
+        point_y = int(point.y * height)
+        if i not in center_points:
+            cv2.circle(output_image, (point_x, point_y),
+                       exercise_point_radius, exercise_point_color, -1)
+
+        cv2.putText(output_image, str(i),
+                    (point_x + 3, point_y - 2),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    exercise_point_color,
+                    1,
+                    2)
+
+    center_x = 0
+    center_y = 0
+
+
+    for i in center_points:
+        point = points[i]
+        point_x = int(point.x * width)
+        point_y = int(point.y * height)
+
+        center_x += point_x
+        center_y += point_y
+
+        cv2.circle(output_image, (point_x, point_y),
+                   center_point_radius, center_point_color, -1)
+
+        cv2.putText(output_image, str(i),
+                    (point_x + 3, point_y - 2),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    center_point_color,
+                    1,
+                    2)
+
+    if len(center_points) > 0:
+        center_x = int(center_x / len(center_points))
+        center_y = int(center_y / len(center_points))
+
+        cv2.circle(output_image, (center_x, center_y),
+                   center_point_radius, center_point_color, -1)
+
+        cv2.putText(output_image, str(i),
+                    (point_x + 3, point_y - 2),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.3,
+                    center_point_color,
+                    1,
+                    2)
 
     return output_image
