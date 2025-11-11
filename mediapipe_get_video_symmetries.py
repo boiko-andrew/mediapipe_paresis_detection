@@ -514,4 +514,4 @@ def get_mediapipe_video_symmetries(video_full_file_name, markup_full_file_name, 
     with ExcelWriter(results_full_file_name) as writer:
         markup.to_excel(writer, sheet_name='results')
 
-    return 0
+    return markup.iloc[[-1]]
